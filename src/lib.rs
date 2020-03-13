@@ -20,8 +20,7 @@
 //! 6. Verify that the time is earlier than the `exp` value of the token
 
 use base64;
-use jsonwebtoken::TokenData;
-use jsonwebtoken::{self, decode, decode_header, DecodingKey, Validation};
+use jsonwebtoken::{self, decode, decode_header, DecodingKey, TokenData, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str;
