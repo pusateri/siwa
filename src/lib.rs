@@ -26,6 +26,11 @@ use std::collections::HashMap;
 use std::str;
 use thiserror::Error;
 
+
+const APPLE_PUB_KEYS: &'static str = "https://appleid.apple.com/auth/keys";
+const APPLE_ISSUER: &'static str = "https://appleid.apple.com";
+
+
 #[derive(Debug, Serialize, Deserialize)]
 struct KeyComponents {
     kty: String,   // "RSA"
@@ -82,7 +87,7 @@ pub async fn validate(
         None => return Err(ValidateError::KidNotFound),
     };
 
-    let resp = reqwest::get("https://appleid.apple.com/auth/keys")
+    let resp = reqwest::get(APPLE_PUB_KEYS)
         .await?
         .json::<HashMap<String, Vec<KeyComponents>>>()
         .await?;
@@ -105,7 +110,7 @@ pub async fn validate(
         &val,
     )?;
 
-    if token_data.claims.iss != "https://appleid.apple.com" {
+    if token_data.claims.iss != APPLE_ISSUER {
         return Err(ValidateError::IssClaimMismatch);
     }
 
