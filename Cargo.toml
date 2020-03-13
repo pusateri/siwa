@@ -10,7 +10,7 @@ repository = "https://github.com/pusateri/siwa.git"
 readme = "README.md"
 documentation = "https://docs.rs/siwa/0.1.0/siwa/"
 keywords = ["signinwithapple", "jwt", "validate"]
-categories = ["Authentication"]
+categories = ["authentication"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
