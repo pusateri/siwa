@@ -20,11 +20,12 @@
 //! 6. Verify that the time is earlier than the `exp` value of the token
 
 use base64;
-use jsonwebtoken::decode_header;
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::TokenData;
+use jsonwebtoken::{self, decode, decode_header, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str;
+use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct KeyComponents {
@@ -37,7 +38,7 @@ struct KeyComponents {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
+pub struct Claims {
     iss: String,
     aud: String,
     exp: i32,
@@ -49,25 +50,31 @@ struct Claims {
     auth_time: i32,
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ValidateError {
+    #[error("Header algorithm unspecified")]
     HeaderAlgorithmUnspecified,
+    #[error("Key ID not found")]
     KidNotFound,
+    #[error("Key not found")]
     KeyNotFound,
+    #[error("Bad JWT Header")]
     BadJWTHeader,
+    #[error(transparent)]
+    Base64(#[from] base64::DecodeError),
+    #[error(transparent)]
+    Jwt(#[from] jsonwebtoken::errors::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
 }
 
-pub async fn validate(base64_token: String, ignore_expire: bool) -> Result<bool, ValidateError> {
-    // Claims is a struct that implements Deserialize
+pub async fn validate(
+    base64_token: String,
+    ignore_expire: bool,
+) -> Result<TokenData<Claims>, ValidateError> {
 
-    let token = base64::decode(&base64_token).expect("cannot base64 decode token");
-    let header = match decode_header(str::from_utf8(&token).unwrap()) {
-        Ok(hdr) => hdr,
-        Err(e) => {
-            eprintln!("jwttoken error: {}", e);
-            return Err(ValidateError::BadJWTHeader);
-        }
-    };
+    let token = base64::decode(&base64_token)?;
+    let header = decode_header(str::from_utf8(&token).unwrap())?;
 
     let kid = match header.kid {
         Some(k) => k,
@@ -75,11 +82,9 @@ pub async fn validate(base64_token: String, ignore_expire: bool) -> Result<bool,
     };
 
     let resp = reqwest::get("https://appleid.apple.com/auth/keys")
-        .await
-        .unwrap()
+        .await?
         .json::<HashMap<String, Vec<KeyComponents>>>()
-        .await
-        .unwrap();
+        .await?;
 
     let mut pubkeys: HashMap<String, &KeyComponents> = HashMap::new();
     for (_i, val) in resp["keys"].iter().enumerate() {
@@ -93,31 +98,23 @@ pub async fn validate(base64_token: String, ignore_expire: bool) -> Result<bool,
 
     let mut val = Validation::new(header.alg);
     val.validate_exp = !ignore_expire;
-    match decode::<Claims>(
+    decode::<Claims>(
         str::from_utf8(&token).unwrap(),
         &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e),
         &val,
-    ) {
-        Ok(msg) => {
-            println!("{:?}", msg);
-        }
-        Err(e) => {
-            eprintln!("validation error: {}", e);
-            return Ok(false);
-        }
-    };
-    Ok(true)
+    )
+    .map_err(|e| e.into())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::validate;
+    use crate::{validate, ValidateError};
 
     #[tokio::test]
-    async fn validate_test() -> std::result::Result<(), String> {
-    	let identity_token = "<insert your token here>";
+    async fn validate_test() -> std::result::Result<(), ValidateError> {
+        let identity_token = "<insert your token here>";
 
-        let result = validate(identity_token.to_string(), false).await;
+        let result = validate(identity_token.to_string(), false).await?;
         println!("{:?}", result);
         Ok(())
     }
