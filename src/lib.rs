@@ -126,10 +126,10 @@ mod tests {
 
     #[tokio::test]
     async fn validate_test() -> std::result::Result<(), ValidateError> {
-        let user_token = "foo";
-        let identity_token = "bar";
+        let user_token = "001888.0aa25f01cd2e49bbb529647575ef6ff9.1820";
+        let identity_token = "ZXlKcmFXUWlPaUpsV0dGMWJtMU1JaXdpWVd4bklqb2lVbE15TlRZaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDJGd2NHeGxhV1F1WVhCd2JHVXVZMjl0SWl3aVlYVmtJam9pYjNKbkxtaHZjR1Z5WldsdWN5NVNaV2x1Y3lJc0ltVjRjQ0k2TVRVNE5ERTBNamsxTUN3aWFXRjBJam94TlRnME1UUXlNelV3TENKemRXSWlPaUl3TURFNE9EZ3VNR0ZoTWpWbU1ERmpaREpsTkRsaVltSTFNamsyTkRjMU56VmxaalptWmprdU1UZ3lNQ0lzSW1OZmFHRnphQ0k2SWtkSmJUQllibEozYlhsT1lsZDBaMDltWjBoT05VRWlMQ0psYldGcGJDSTZJakptWkRNMk5YSmxiVGRBY0hKcGRtRjBaWEpsYkdGNUxtRndjR3hsYVdRdVkyOXRJaXdpWlcxaGFXeGZkbVZ5YVdacFpXUWlPaUowY25WbElpd2lhWE5mY0hKcGRtRjBaVjlsYldGcGJDSTZJblJ5ZFdVaUxDSmhkWFJvWDNScGJXVWlPakUxT0RReE5ESXpOVEFzSW01dmJtTmxYM04xY0hCdmNuUmxaQ0k2ZEhKMVpYMC5JbmJ4VUdJSjhSZU1kNDlXZ2RPcHZZWnlSaUZVdklCR3V1TmtKamd6RDI4V3h5MnE2a2thZUVobFF3T2V6dkcxNHpOWlRtSllzcjdkUk1JSkFHdWFOMXBsOTY4M3RDcUFraHZyek04REdaX0JaYzktUEt5cWFvNVUzeklyeUFidGdnWXFPWHFFVjZ0U0hhTFZQM2xSSjdoRzZWYjhsMkl2cGU2MlNJNWxZVkFVMWhlWUx1RWI0THBPa1RjRjVUMGNRWXNZNVFhMG1xci1UVUtsbGJ1RUlWZHNKUG9WTjdMVTJOWkZfWjJOUzJoQVZ3MXlCRzVZekpJWmNxZlRmZXNYLVNKQVNNNWVwd2dHcU51WDJPc3NhMng0X21yY1NxOGZOYWNRZ1phelpUVlNyZWdWd3V0ZjFKdnZoczBNODNsQWlXTTh3NFpvd3RsczdVRnprejM5dkE=";
 
-        let result = validate(user_token.to_string(), identity_token.to_string(), false).await?;
+        let result = validate(user_token.to_string(), identity_token.to_string(), true).await?;
         println!("{:?}", result);
         Ok(())
     }

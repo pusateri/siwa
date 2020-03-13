@@ -1,6 +1,6 @@
 [package]
 name = "siwa"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Tom Pusateri <pusateri@bangj.com>"]
 edition = "2018"
 license = "MIT"
@@ -8,7 +8,7 @@ description = "Sign In With Apple JWT validator library"
 homepage = "https://github.com/pusateri/siwa"
 repository = "https://github.com/pusateri/siwa.git"
 readme = "README.md"
-documentation = "https://docs.rs/siwa/0.1.0/siwa/"
+documentation = "https://docs.rs/siwa/0.1.1/"
 keywords = ["signinwithapple", "jwt", "validate"]
 categories = ["authentication"]
 
