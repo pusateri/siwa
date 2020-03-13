@@ -37,7 +37,7 @@ struct KeyComponents {
     e: String,     // "AQAB"
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Claims {
     iss: String,
     aud: String,
@@ -58,8 +58,10 @@ pub enum ValidateError {
     KidNotFound,
     #[error("Key not found")]
     KeyNotFound,
-    #[error("Bad JWT Header")]
-    BadJWTHeader,
+    #[error("Iss claim mismatch")]
+    IssClaimMismatch,
+    #[error("Client ID mismatch")]
+    ClientIdMismatch,
     #[error(transparent)]
     Base64(#[from] base64::DecodeError),
     #[error(transparent)]
@@ -69,10 +71,10 @@ pub enum ValidateError {
 }
 
 pub async fn validate(
+    client_id: String,
     base64_token: String,
     ignore_expire: bool,
 ) -> Result<TokenData<Claims>, ValidateError> {
-
     let token = base64::decode(&base64_token)?;
     let header = decode_header(str::from_utf8(&token).unwrap())?;
 
@@ -98,12 +100,20 @@ pub async fn validate(
 
     let mut val = Validation::new(header.alg);
     val.validate_exp = !ignore_expire;
-    decode::<Claims>(
+    let token_data = decode::<Claims>(
         str::from_utf8(&token).unwrap(),
         &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e),
         &val,
-    )
-    .map_err(|e| e.into())
+    )?;
+
+    if token_data.claims.iss != "https://appleid.apple.com" {
+        return Err(ValidateError::IssClaimMismatch);
+    }
+
+    if token_data.claims.sub != client_id {
+        return Err(ValidateError::ClientIdMismatch);
+    }
+    Ok(token_data)
 }
 
 #[cfg(test)]
@@ -112,9 +122,10 @@ mod tests {
 
     #[tokio::test]
     async fn validate_test() -> std::result::Result<(), ValidateError> {
-        let identity_token = "<insert your token here>";
+        let user_token = "foo";
+        let identity_token = "bar";
 
-        let result = validate(identity_token.to_string(), false).await?;
+        let result = validate(user_token.to_string(), identity_token.to_string(), false).await?;
         println!("{:?}", result);
         Ok(())
     }
