@@ -26,10 +26,8 @@ use std::collections::HashMap;
 use std::str;
 use thiserror::Error;
 
-
 const APPLE_PUB_KEYS: &'static str = "https://appleid.apple.com/auth/keys";
 const APPLE_ISSUER: &'static str = "https://appleid.apple.com";
-
 
 #[derive(Debug, Serialize, Deserialize)]
 struct KeyComponents {
@@ -43,15 +41,16 @@ struct KeyComponents {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Claims {
-    iss: String,
-    aud: String,
-    exp: i32,
-    iat: i32,
-    sub: String,
-    c_hash: String,
-    email: String,
-    email_verified: String,
-    auth_time: i32,
+    pub iss: String,
+    pub aud: String,
+    pub exp: i32,
+    pub iat: i32,
+    pub sub: String,
+    pub c_hash: String,
+    pub email: String,
+    pub email_verified: bool,
+    pub auth_time: i32,
+    pub nonce_supported: bool,
 }
 
 #[derive(Error, Debug)]
@@ -74,11 +73,7 @@ pub enum ValidateError {
     Reqwest(#[from] reqwest::Error),
 }
 
-pub async fn validate(
-    client_id: String,
-    base64_token: String,
-    ignore_expire: bool,
-) -> Result<TokenData<Claims>, ValidateError> {
+pub async fn validate(client_id: String, base64_token: String, audience: String, ignore_expire: bool) -> Result<TokenData<Claims>, ValidateError> {
     let token = base64::decode(&base64_token)?;
     let header = decode_header(str::from_utf8(&token).unwrap())?;
 
@@ -87,10 +82,7 @@ pub async fn validate(
         None => return Err(ValidateError::KidNotFound),
     };
 
-    let resp = reqwest::get(APPLE_PUB_KEYS)
-        .await?
-        .json::<HashMap<String, Vec<KeyComponents>>>()
-        .await?;
+    let resp = reqwest::get(APPLE_PUB_KEYS).await?.json::<HashMap<String, Vec<KeyComponents>>>().await?;
 
     let mut pubkeys: HashMap<String, &KeyComponents> = HashMap::new();
     for (_i, val) in resp["keys"].iter().enumerate() {
@@ -104,9 +96,11 @@ pub async fn validate(
 
     let mut val = Validation::new(header.alg);
     val.validate_exp = !ignore_expire;
+    val.set_audience(&[audience]);
+
     let token_data = decode::<Claims>(
         str::from_utf8(&token).unwrap(),
-        &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e),
+        &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e).to_owned().unwrap(),
         &val,
     )?;
 
@@ -117,6 +111,7 @@ pub async fn validate(
     if token_data.claims.sub != client_id {
         return Err(ValidateError::ClientIdMismatch);
     }
+
     Ok(token_data)
 }
 
@@ -126,10 +121,17 @@ mod tests {
 
     #[tokio::test]
     async fn validate_test() -> std::result::Result<(), ValidateError> {
-        let user_token = "001888.0aa25f01cd2e49bbb529647575ef6ff9.1820";
-        let identity_token = "ZXlKcmFXUWlPaUpsV0dGMWJtMU1JaXdpWVd4bklqb2lVbE15TlRZaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDJGd2NHeGxhV1F1WVhCd2JHVXVZMjl0SWl3aVlYVmtJam9pYjNKbkxtaHZjR1Z5WldsdWN5NVNaV2x1Y3lJc0ltVjRjQ0k2TVRVNE5ERTBNamsxTUN3aWFXRjBJam94TlRnME1UUXlNelV3TENKemRXSWlPaUl3TURFNE9EZ3VNR0ZoTWpWbU1ERmpaREpsTkRsaVltSTFNamsyTkRjMU56VmxaalptWmprdU1UZ3lNQ0lzSW1OZmFHRnphQ0k2SWtkSmJUQllibEozYlhsT1lsZDBaMDltWjBoT05VRWlMQ0psYldGcGJDSTZJakptWkRNMk5YSmxiVGRBY0hKcGRtRjBaWEpsYkdGNUxtRndjR3hsYVdRdVkyOXRJaXdpWlcxaGFXeGZkbVZ5YVdacFpXUWlPaUowY25WbElpd2lhWE5mY0hKcGRtRjBaVjlsYldGcGJDSTZJblJ5ZFdVaUxDSmhkWFJvWDNScGJXVWlPakUxT0RReE5ESXpOVEFzSW01dmJtTmxYM04xY0hCdmNuUmxaQ0k2ZEhKMVpYMC5JbmJ4VUdJSjhSZU1kNDlXZ2RPcHZZWnlSaUZVdklCR3V1TmtKamd6RDI4V3h5MnE2a2thZUVobFF3T2V6dkcxNHpOWlRtSllzcjdkUk1JSkFHdWFOMXBsOTY4M3RDcUFraHZyek04REdaX0JaYzktUEt5cWFvNVUzeklyeUFidGdnWXFPWHFFVjZ0U0hhTFZQM2xSSjdoRzZWYjhsMkl2cGU2MlNJNWxZVkFVMWhlWUx1RWI0THBPa1RjRjVUMGNRWXNZNVFhMG1xci1UVUtsbGJ1RUlWZHNKUG9WTjdMVTJOWkZfWjJOUzJoQVZ3MXlCRzVZekpJWmNxZlRmZXNYLVNKQVNNNWVwd2dHcU51WDJPc3NhMng0X21yY1NxOGZOYWNRZ1phelpUVlNyZWdWd3V0ZjFKdnZoczBNODNsQWlXTTh3NFpvd3RsczdVRnprejM5dkE=";
+        let user_token = "000904.f905e012081a4e139bbc0ffaed13caaf.1851";
+        let identity_token = "ZXlKcmFXUWlPaUp3WjJkdVVXVk9RMDlWSWl3aVlXeG5Jam9pVWxNeU5UWWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwyRndjR3hsYVdRdVlYQndiR1V1WTI5dElpd2lZWFZrSWpvaVkyOXRMbVY0WVcxd2JHVXVZWEJ3YkdVdGMyRnRjR3hsWTI5a1pTNXFkV2xqWlNJc0ltVjRjQ0k2TVRjeU1qQXhPVGcyTlN3aWFXRjBJam94TnpJeE9UTXpORFkxTENKemRXSWlPaUl3TURBNU1EUXVaamt3TldVd01USXdPREZoTkdVeE16bGlZbU13Wm1aaFpXUXhNMk5oWVdZdU1UZzFNU0lzSW1OZmFHRnphQ0k2SW1KNFdraGpObTEyWjFCRlQweDFVMVZVVVRNMmNXY2lMQ0psYldGcGJDSTZJbkJ5WkRaMk5qWmpOM0ZBY0hKcGRtRjBaWEpsYkdGNUxtRndjR3hsYVdRdVkyOXRJaXdpWlcxaGFXeGZkbVZ5YVdacFpXUWlPblJ5ZFdVc0ltRjFkR2hmZEdsdFpTSTZNVGN5TVRrek16UTJOU3dpYm05dVkyVmZjM1Z3Y0c5eWRHVmtJanAwY25WbExDSnlaV0ZzWDNWelpYSmZjM1JoZEhWeklqb3hmUS5KTmEzRGVpUTZCYnFMXzRVa2daVldfMzJINVVoc0djQTk4UEZDSVV5SVdBbXZhRXlFWWREa3FuZS0xRm1GWWg2dFdZOUNta1RKYkZqcmRPMElkUFlROUJZdVNqdGxCYzV5VE4xVjlzR3A0NzYwR1dCcE5mRW50S1ZoUmx0OXh0LWZZV0lnNE05QmtBZXZBRkxPZ2NlOG43QndpRFlFeGx6WUxVamY0VmJ5R1hQRFlSMk0zbko5X2M4S19oc1FhV1Z3OWM2dGlPbUQyR0owaEJkOGl2a09IZjZwSzZMOFI3VmF5TWZyMGFYTUZpQkduTXN3WWpxT3UwVmgtcjJMblRUUlBzZDFYOE50cGpQb0kwWDBJeC1hZldNY092TzNlc1RTNVRoZF9Ba1I5M1c1eFlRTnFRSUFua1owekNNUDA4VWw5eV9wMTE4VnhYNVFhenlETThjcWc=";
 
-        let result = validate(user_token.to_string(), identity_token.to_string(), true).await?;
+        let result = validate(
+            user_token.to_string(),
+            identity_token.to_string(),
+            "com.example.apple-samplecode.juice".to_string(),
+            true,
+        )
+        .await?;
+
         println!("{:?}", result);
         Ok(())
     }
