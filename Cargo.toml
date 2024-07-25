@@ -1,6 +1,6 @@
 [package]
 name = "siwa"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Tom Pusateri <pusateri@bangj.com>"]
 edition = "2018"
 license = "MIT"
@@ -8,15 +8,15 @@ description = "Sign In With Apple JWT validator library"
 homepage = "https://github.com/pusateri/siwa"
 repository = "https://github.com/pusateri/siwa.git"
 readme = "README.md"
-documentation = "https://docs.rs/siwa/0.1.2/"
+documentation = "https://docs.rs/siwa/0.2.0/"
 keywords = ["signinwithapple", "jwt", "validate"]
 categories = ["authentication"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-jsonwebtoken = "7"
-serde = {version = "1.0", features = ["derive"] }
+jsonwebtoken = "9"
+serde = { version = "1.0", features = ["derive"] }
 base64 = "0.13"
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.2", features = ["full"] }
