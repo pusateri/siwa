@@ -100,7 +100,7 @@ pub async fn validate(client_id: String, base64_token: String, audience: String,
 
     let token_data = decode::<Claims>(
         str::from_utf8(&token).unwrap(),
-        &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e).to_owned().unwrap(),
+        &DecodingKey::from_rsa_components(&pubkey.n, &pubkey.e).unwrap(),
         &val,
     )?;
 
